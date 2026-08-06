@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Android 教学测试平台</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <h1>Android 教学测试平台</h1>
+      <form method="post" action="/tasks" class="grid-form">
+        <label>设备号<input name="device_id" required placeholder="来自 adb devices 的设备号"></label>
+        <label>APK 路径<input name="apk_path" placeholder="C:\path\to\app.apk"></label>
+        <label>测试用例数<input name="test_cases" type="number" value="3" min="1"></label>
+        <label>每个用例事件数<input name="events_per_case" type="number" value="50" min="1"></label>
+        <label>探索算法
+          <select name="algorithm">
+            {% for name in algorithms %}
+            <option value="{{ name }}" {% if name == "random" %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>随机种子<input name="seed" placeholder="留空表示自动生成"></label>
+        <label>启用性质检查
+          <input name="enable_properties" type="checkbox">
+        </label>
+        <label>性质执行概率<input name="property_probability" type="number" value="0.2" min="0" max="1" step="0.05"></label>
+        <label>动作最小间隔（秒）<input name="min_action_interval_sec" type="number" value="1.0" min="1" step="0.1"></label>
+        <label>点击占比<input name="click_weight" type="number" value="0.7" min="0" step="0.05"></label>
+        <label>长按占比<input name="long_click_weight" type="number" value="0" min="0" step="0.05"></label>
+        <label>滑动占比<input name="swipe_weight" type="number" value="0" min="0" step="0.05"></label>
+        <label>输入占比<input name="input_weight" type="number" value="0.15" min="0" step="0.05"></label>
+        <label>返回占比<input name="back_weight" type="number" value="0.05" min="0" step="0.05"></label>
+        <button type="submit">开始测试</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>最近任务</h2>
+      <table>
+        <thead><tr><th>ID</th><th>设备</th><th>状态</th><th>包名</th><th></th></tr></thead>
+        <tbody>
+        {% for task in tasks %}
+          <tr>
+            <td>{{ task.id }}</td>
+            <td>{{ task.device_id }}</td>
+            <td>{{ task.status }}</td>
+            <td>{{ task.package_name or "" }}</td>
+            <td><a href="/tasks/{{ task.id }}">打开</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

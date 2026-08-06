@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>任务 {{ task.id }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <h1>任务 #{{ task.id }}</h1>
+      <p><a class="button-link" href="/">返回主界面</a></p>
+      <p>状态：<span id="task-status">{{ task.status }}</span></p>
+      <p>设备：<span id="task-device">{{ task.device_id }}</span></p>
+      <p>包名：<span id="task-package">{{ task.package_name or "" }}</span></p>
+      <p id="summary-ready" {% if not summary_exists %}style="display:none"{% endif %}>
+        <a href="/outputs/task-{{ task.id }}/index.html">打开总报告</a>
+      </p>
+      <p id="summary-pending" {% if summary_exists %}style="display:none"{% endif %}>总报告尚未生成。</p>
+      <form class="toolbar" method="post" action="/tasks/{{ task.id }}/pause"><button type="submit">暂停</button></form>
+      <form class="toolbar" method="post" action="/tasks/{{ task.id }}/resume"><button type="submit">继续</button></form>
+      <form class="toolbar" method="post" action="/tasks/{{ task.id }}/stop"><button type="submit">停止</button></form>
+    </section>
+
+    <section class="panel">
+      <h2>本次测试配置</h2>
+      <table><tbody id="config-body">
+      {% for item in config_view %}
+        <tr><th>{{ item.label }}</th><td>{{ item.value }}</td></tr>
+      {% endfor %}
+      </tbody></table>
+    </section>
+
+    <section class="panel">
+      <h2>错误</h2>
+      <table>
+        <thead><tr><th>错误 ID</th><th>类型</th><th>标题</th><th>已标记误报</th><th>报告</th></tr></thead>
+        <tbody id="errors-body">
+        {% for err in errors %}
+          <tr>
+            <td>{{ err.id }}</td><td>{{ err.error_type }}</td><td>{{ err.title }}</td>
+            <td>{{ "是" if err.suppressed else "否" }}</td>
+            <td>{% if err.report_path %}<a href="/outputs/task-{{ task.id }}/error-{{ err.id }}.html">打开</a>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>实时决策日志 <small id="live-hint">自动刷新中</small></h2>
+      <p>这里显示每轮有哪些候选控件、哪些性质的前置条件满足，以及最终为什么选择某个控件或性质。</p>
+      <div id="decision-body" class="decision-logs">
+        {% for item in decision_logs %}
+          <article class="decision-card">
+            <h3>{{ item.selected_summary }}</h3>
+            <p class="muted">编号：case-{{ "%03d"|format(item.case_index) }}-event-{{ "%04d"|format(item.event_index) }}</p>
+            <p><strong>选择原因：</strong>{{ item.reason }}</p>
+            <p><strong>候选性质（前置条件满足）：</strong>{{ item.candidate_properties|join(", ") if item.candidate_properties else "无" }}</p>
+            <details>
+              <summary>被排除的性质及原因</summary>
+              <ul>
+              {% for name, reason in item.rejected_properties.items() %}
+                <li>{{ name }}：{{ reason }}</li>
+              {% endfor %}
+              {% if not item.rejected_properties %}
+                <li>无</li>
+              {% endif %}
+              </ul>
+            </details>
+            <details>
+              <summary>候选控件/动作（最多显示 30 个，共 {{ item.candidate_action_count }} 个）</summary>
+              <ol>
+              {% for action in item.candidate_actions %}
+                <li>{{ action.kind }}：{{ action.target }}</li>
+              {% endfor %}
+              </ol>
+            </details>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>最近事件</h2>
+      <p>已记录事件总数：<span id="event-count">-</span>，最新事件编号：<span id="latest-event-id">-</span></p>
+      <div id="events-body" class="event-cards">
+        {% for event in events %}
+          <article class="event-card">
+            <div class="event-shot">
+              {% if event.screenshot_url %}
+                <a href="{{ event.screenshot_url }}" target="_blank"><img src="{{ event.screenshot_url }}" alt="事件截图" loading="lazy" decoding="async"></a>
+              {% else %}
+                <span>无截图</span>
+              {% endif %}
+            </div>
+            <div class="event-info">
+              <div><strong>编号：</strong>case-{{ "%03d"|format(event.case_index) }}-event-{{ "%04d"|format(event.event_index) }}</div>
+              <div><strong>类型：</strong>{{ event.display_kind }}{% if event.display_detail %} / {{ event.display_detail }}{% endif %}</div>
+              <div><strong>动作：</strong>{{ event.action_kind }}</div>
+              <div><strong>目标控件：</strong>{{ event.action_target or "无目标控件" }}</div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>最近诊断</h2>
+      <table>
+        <thead><tr><th>用例</th><th>事件编号</th><th>文件名前缀</th><th>阶段</th><th>当前包</th><th>目标包</th><th>控件树包名</th><th>候选数量</th><th>说明</th></tr></thead>
+        <tbody id="diagnostics-body">
+        {% for item in diagnostics %}
+          <tr>
+            <td>{{ item.case_index if item.case_index is not none else "" }}</td>
+            <td>{{ item.event_index if item.event_index is not none else "" }}</td>
+            <td>{% if item.case_index is not none and item.event_index is not none %}case-{{ "%03d"|format(item.case_index) }}-event-{{ "%04d"|format(item.event_index) }}{% endif %}</td>
+            <td>{{ item.stage }}</td><td>{{ item.current_package or "" }}</td><td>{{ item.target_package or "" }}</td>
+            <td>{{ item.hierarchy_packages or "" }}</td><td>{{ item.candidate_counts or "" }}</td><td>{{ item.message or "" }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const taskId = {{ task.id }};
+    let refreshInFlight = false;
+    let lastRenderedLatestEventId = "";
+    let lastRenderedDecisionKey = "";
+
+    function text(value) { return value === null || value === undefined ? "" : String(value); }
+    function prefix(caseIndex, eventIndex) {
+      if (caseIndex === null || caseIndex === undefined || eventIndex === null || eventIndex === undefined) return "";
+      return `case-${String(caseIndex).padStart(3, "0")}-event-${String(eventIndex).padStart(4, "0")}`;
+    }
+    function row(cells) {
+      const tr = document.createElement("tr");
+      for (const value of cells) {
+        const td = document.createElement("td");
+        if (value instanceof Node) td.appendChild(value); else td.textContent = text(value);
+        tr.appendChild(td);
+      }
+      return tr;
+    }
+    function configRow(item) {
+      const tr = document.createElement("tr");
+      const th = document.createElement("th");
+      const td = document.createElement("td");
+      th.textContent = item.label; td.textContent = item.value;
+      tr.appendChild(th); tr.appendChild(td);
+      return tr;
+    }
+    function eventCard(event) {
+      const card = document.createElement("article");
+      card.className = "event-card";
+      const shot = document.createElement("div");
+      shot.className = "event-shot";
+      if (event.screenshot_url) {
+        const link = document.createElement("a");
+        link.href = event.screenshot_url; link.target = "_blank";
+        const img = document.createElement("img");
+        img.src = event.screenshot_url; img.alt = "事件截图"; img.loading = "lazy"; img.decoding = "async";
+        link.appendChild(img); shot.appendChild(link);
+      } else {
+        shot.textContent = "无截图";
+      }
+      const info = document.createElement("div");
+      info.className = "event-info";
+      [["编号", prefix(event.case_index, event.event_index)], ["类型", event.display_detail ? `${event.display_kind} / ${event.display_detail}` : event.display_kind], ["动作", event.action_kind], ["目标控件", event.action_target || "无目标控件"]].forEach(([label, value]) => {
+        const line = document.createElement("div");
+        const strong = document.createElement("strong");
+        strong.textContent = `${label}：`;
+        line.appendChild(strong); line.appendChild(document.createTextNode(text(value))); info.appendChild(line);
+      });
+      card.appendChild(shot); card.appendChild(info);
+      return card;
+    }
+    function decisionCard(item) {
+      const card = document.createElement("article");
+      card.className = "decision-card";
+      const title = document.createElement("h3");
+      title.textContent = item.selected_summary || "尚未选择";
+      card.appendChild(title);
+      const meta = document.createElement("p");
+      meta.className = "muted";
+      meta.textContent = `编号：${prefix(item.case_index, item.event_index)}`;
+      card.appendChild(meta);
+      const reason = document.createElement("p");
+      reason.innerHTML = `<strong>选择原因：</strong>${text(item.reason)}`;
+      card.appendChild(reason);
+      const props = document.createElement("p");
+      props.innerHTML = `<strong>候选性质（前置条件满足）：</strong>${text((item.candidate_properties || []).join(", ") || "无")}`;
+      card.appendChild(props);
+      const rejected = document.createElement("details");
+      const rejectedSummary = document.createElement("summary");
+      rejectedSummary.textContent = "被排除的性质及原因";
+      rejected.appendChild(rejectedSummary);
+      const rejectedList = document.createElement("ul");
+      const rejectedProps = item.rejected_properties || {};
+      const rejectedEntries = Object.entries(rejectedProps);
+      if (rejectedEntries.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "无";
+        rejectedList.appendChild(li);
+      } else {
+        for (const [name, reasonText] of rejectedEntries) {
+          const li = document.createElement("li");
+          li.textContent = `${name}：${reasonText}`;
+          rejectedList.appendChild(li);
+        }
+      }
+      rejected.appendChild(rejectedList);
+      card.appendChild(rejected);
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = `候选控件/动作（最多显示 30 个，共 ${item.candidate_action_count || 0} 个）`;
+      details.appendChild(summary);
+      const ol = document.createElement("ol");
+      for (const action of item.candidate_actions || []) {
+        const li = document.createElement("li");
+        li.textContent = `${action.kind}：${action.target}`;
+        ol.appendChild(li);
+      }
+      details.appendChild(ol);
+      card.appendChild(details);
+      return card;
+    }
+
+    async function refreshTask() {
+      if (refreshInFlight) return;
+      refreshInFlight = true;
+      const hint = document.getElementById("live-hint");
+      try {
+        const response = await fetch(`/tasks/${taskId}/live`, {cache: "no-store"});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        document.getElementById("task-status").textContent = data.task.status;
+        document.getElementById("task-device").textContent = data.task.device_id;
+        document.getElementById("task-package").textContent = data.task.package_name;
+        document.getElementById("summary-ready").style.display = data.summary_exists ? "" : "none";
+        document.getElementById("summary-pending").style.display = data.summary_exists ? "none" : "";
+        document.getElementById("event-count").textContent = text(data.event_count);
+        document.getElementById("latest-event-id").textContent = text(data.latest_event_id);
+
+        const configBody = document.getElementById("config-body");
+        configBody.replaceChildren();
+        for (const item of data.config) configBody.appendChild(configRow(item));
+
+        const errorsBody = document.getElementById("errors-body");
+        errorsBody.replaceChildren();
+        for (const err of data.errors) {
+          let report = "";
+          if (err.report_path) {
+            report = document.createElement("a");
+            report.href = `/outputs/task-${taskId}/error-${err.id}.html`;
+            report.textContent = "打开";
+          }
+          errorsBody.appendChild(row([err.id, err.error_type, err.title, err.suppressed ? "是" : "否", report]));
+        }
+
+        const decisionKey = (data.decision_logs || []).map(item => `${item.case_index}-${item.event_index}-${item.selected_summary}`).join("|");
+        if (decisionKey !== lastRenderedDecisionKey) {
+          const decisionBody = document.getElementById("decision-body");
+          decisionBody.replaceChildren();
+          for (const item of data.decision_logs || []) decisionBody.appendChild(decisionCard(item));
+          lastRenderedDecisionKey = decisionKey;
+        }
+
+        if (data.latest_event_id !== lastRenderedLatestEventId) {
+          const eventsBody = document.getElementById("events-body");
+          eventsBody.replaceChildren();
+          for (const event of data.events) eventsBody.appendChild(eventCard(event));
+          lastRenderedLatestEventId = data.latest_event_id;
+        }
+
+        const diagnosticsBody = document.getElementById("diagnostics-body");
+        diagnosticsBody.replaceChildren();
+        for (const item of data.diagnostics) {
+          diagnosticsBody.appendChild(row([item.case_index, item.event_index, prefix(item.case_index, item.event_index), item.stage, item.current_package, item.target_package, item.hierarchy_packages, item.candidate_counts, item.message]));
+        }
+        hint.textContent = "自动刷新中";
+      } catch (error) {
+        hint.textContent = "自动刷新失败：" + error.message;
+      } finally {
+        refreshInFlight = false;
+      }
+    }
+    refreshTask();
+    setInterval(refreshTask, 3000);
+  </script>
+</body>
+</html>
