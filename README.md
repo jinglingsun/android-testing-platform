@@ -2,7 +2,7 @@
 
 本项目是一个本地教学平台原型，用 Python + FastAPI + Jinja2 + SQLite + openatx/uiautomator2 实现 Android 应用自动探索测试。
 
-完整运行教程见 [RUNNING_GUIDE.md](RUNNING_GUIDE.md)。
+完整运行教程见 [source_code/RUNNING_GUIDE.md](source_code/RUNNING_GUIDE.md)。
 
 ## 运行
 
@@ -14,6 +14,7 @@
 - 手机已打开 USB 调试；模拟器或真机可通过 `adb devices` 看到。
 
 ```powershell
+cd source_code
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
@@ -25,6 +26,7 @@ uvicorn platform_code.main:app --reload --host 127.0.0.1 --port 8000
 如果你的 Windows 只支持 `py` 启动器：
 
 ```powershell
+cd source_code
 py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
@@ -45,8 +47,8 @@ adb devices
 - 用户输入 `adb devices` 得到的设备号，填写 APK 路径。
 - 平台安装 APK、解析目标包名、清理应用数据、启动应用。
 - 支持随机、DFS、BFS 三类探索算法。
-- 支持用户在 `plugins/algorithms` 中新增探索算法。
-- 支持用户在 `plugins/properties` 中新增性质函数。
+- 支持用户在 `source_code/plugins/algorithms` 中新增探索算法。
+- 支持用户在 `source_code/plugins/properties` 中新增性质函数。
 - 每个 UI 动作后截图、保存 UI XML、记录可重放事件。
 - 通过目标应用 `FATAL EXCEPTION` 捕获崩溃。
 - 通过性质 final assert 捕获非崩溃错误。
@@ -56,17 +58,17 @@ adb devices
 
 ## 代码结构
 
-- `app/main.py`: FastAPI 入口和页面路由。
-- `app/database.py`: SQLite 初始化与简单访问层。
-- `app/runner.py`: 测试任务执行主循环。
-- `app/device.py`: adb/uiautomator2 设备适配层。
-- `app/state.py`: UI 树规范化与状态哈希。
-- `app/actions.py`: UI 动作模型和候选动作生成。
-- `app/algorithms.py`: 算法插件加载与内置算法。
-- `app/properties.py`: 性质插件加载与执行协议。
-- `app/reports.py`: HTML 报告生成。
-- `plugins/algorithms`: 学生新增算法的位置。
-- `plugins/properties`: 学生新增性质的位置。
+- `source_code/platform_code/main.py`: FastAPI 入口和页面路由。
+- `source_code/platform_code/database.py`: SQLite 初始化与简单访问层。
+- `source_code/platform_code/runner.py`: 测试任务执行主循环。
+- `source_code/platform_code/device.py`: adb/uiautomator2 设备适配层。
+- `source_code/platform_code/state.py`: UI 树规范化与状态哈希。
+- `source_code/platform_code/actions.py`: UI 动作模型和候选动作生成。
+- `source_code/platform_code/algorithms.py`: 算法插件加载与内置算法。
+- `source_code/platform_code/properties.py`: 性质插件加载与执行协议。
+- `source_code/platform_code/reports.py`: HTML 报告生成。
+- `source_code/plugins/algorithms`: 学生新增算法的位置。
+- `source_code/plugins/properties`: 学生新增性质的位置。
 
 ## UI 状态规范化规则
 
@@ -82,7 +84,7 @@ adb devices
 
 ## 性质函数协议
 
-性质文件放在 `plugins/properties/*.py`，函数名以 `test_` 开头。
+性质文件放在 `source_code/plugins/properties/*.py`，函数名以 `test_` 开头。
 
 约定：
 
@@ -91,4 +93,4 @@ adb devices
 - 最后必须有且只有一个 `final_assert_*`。
 - 只有最后的 `final_assert_*` 失败才算性质违反。
 
-示例见 `plugins/properties/sample_input_box.py`。
+示例见 `source_code/plugins/properties/sample_input_box.py`。

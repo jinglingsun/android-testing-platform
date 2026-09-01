@@ -1,9 +1,25 @@
-# VS Code 快速运行教程
+# 安装与运行指南（Windows + VS Code）
 
 这份教程分成两部分：
 
 - 前期环境准备：只需要做一次。
 - 运行项目：以后每次实验都按这个流程启动。
+
+项目采用以下目录结构：
+
+```text
+android-testing-platform\
+├── README.md
+└── source_code\
+    ├── platform_code\
+    ├── plugins\
+    ├── scripts\
+    ├── templates\
+    ├── static\
+    └── requirements.txt
+```
+
+所有安装、自检和启动命令都必须在 `source_code` 目录中执行。
 
 ## 一、前期环境准备
 
@@ -115,7 +131,7 @@ emulator-5554
 File -> Open Folder
 ```
 
-打开本项目文件夹。
+打开仓库根目录 `android-testing-platform`。
 
 ### 2. 打开终端
 
@@ -125,7 +141,26 @@ File -> Open Folder
 Terminal -> New Terminal
 ```
 
-确认终端当前路径是项目目录。
+如果终端当前位于仓库根目录，先进入源码目录：
+
+```powershell
+cd source_code
+```
+
+执行下面的命令确认位置正确：
+
+```powershell
+Get-Location
+Test-Path requirements.txt
+```
+
+`Test-Path requirements.txt` 应输出：
+
+```text
+True
+```
+
+后续命令都在这个 `source_code` 目录中执行。
 
 ### 3. 创建虚拟环境
 
@@ -136,6 +171,8 @@ python -m venv .venv
 ```
 
 如果项目目录下已经有 `.venv`，这一步可以跳过。
+
+如果项目曾被移动过，并且旧虚拟环境无法激活，删除当前 `source_code` 目录里的 `.venv` 后重新执行上述命令即可。虚拟环境属于本机运行环境，不影响项目源码和测试数据。
 
 ### 4. 激活虚拟环境
 
@@ -203,6 +240,8 @@ Uvicorn running on http://127.0.0.1:8000
 http://127.0.0.1:8000
 ```
 
+不要关闭正在运行 Uvicorn 的终端。需要执行其他命令时，请在 VS Code 中另开一个终端。
+
 ### 8. 开始测试
 
 网页中填写：
@@ -253,6 +292,30 @@ Add python.exe to PATH
 
 ```powershell
 python -m venv .venv
+```
+
+同时确认终端位于：
+
+```text
+android-testing-platform\source_code
+```
+
+### requirements.txt 找不到
+
+说明终端仍位于仓库根目录。执行：
+
+```powershell
+cd source_code
+pip install -r requirements.txt
+```
+
+### No module named platform_code
+
+通常是因为没有在 `source_code` 目录中启动。执行：
+
+```powershell
+cd source_code
+python -m uvicorn platform_code.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 ### 停止平台
